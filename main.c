@@ -42,8 +42,8 @@
 #define TIMEOUT 10000//!< timeout to wait for sending
 
 //identification of sensor site peizo
-#define ARQ_LOGGER 0 // 0 for OLD master
-#define NORMALMODE 1//0 for test mode
+#define ARQ_LOGGER 1 // 0 for OLD master
+#define NORMALMODE 0//0 for test mode
 #define PIEZONUM 21 //actual number of PIEZO
 
 #include <p33Fxxxx.h>
@@ -323,20 +323,12 @@ int main(void){
 
 
 	if (check_init ==3){
-//		sprintf(buf, "Initialization complete.\r\n");
-//		transmit(buf);
+		sprintf(buf, "Initialization complete.\r\n");
+		transmit(buf);
 	}
 
         node_ecan_init();//initialize CAN
         
-        /*
-         Modes notification
-         */
-        if (NORMALMODE){
-            sprintf(buf, "NORMAL MODE, WAIT FOR MASTER.\r\n");
-            transmit(buf);
-        }
-  
         
 	while(1){
             
@@ -391,22 +383,21 @@ int main(void){
 
                 else{ //for old colum (polling)
                     //print buffer data to prevent parsing 
-                gCanMsg.data[0] = parsed_data[2];
-                gCanMsg.data[1] = 0xAB;
-                gCanMsg.data[2] = parsed_data[1];
-                gCanMsg.data[3] = 0xCD;
-                gCanMsg.data[4] = parsed_data[0];
-                gCanMsg.data[5] = 0xEF;
-                gCanMsg.data_length = 6;
-                gCanMsg.id = node_id<<3;
-                can_send_data_with_arb_repeat_extended(&gCanMsg,TIMEOUT);
+                    gCanMsg.data[0] = parsed_data[2];
+                    gCanMsg.data[1] = 0xAB;
+                    gCanMsg.data[2] = parsed_data[1];
+                    gCanMsg.data[3] = 0xCD;
+                    gCanMsg.data[4] = parsed_data[0];
+                    gCanMsg.data[5] = 0xEF;
+                    gCanMsg.data_length = 6;
+                    gCanMsg.id = node_id<<3;
+                    can_send_data_with_arb_repeat_extended(&gCanMsg,TIMEOUT);
                 }
             }
             }
 
             //if test mode. print data directly to serial
             else{
-
 
                 T6CONbits.TON = 1;  // start sweep
                 // start ADC
@@ -420,16 +411,20 @@ int main(void){
                 sprintf(buf, "%.3f \t %d  \r\n",result, counter);
                 transmit(buf);
 
+                //read thermistor resistance
+
                 AD2CON1bits.ADON = 1;
                 AD2CON1bits.SAMP = 1;	// start sampling
                 __delay_us(10);
                 AD2CON1bits.SAMP = 0;	// end sampling, start converting
                 while (!AD2CON1bits.DONE);
-                V_thermADC = ADC2BUF0;        //thermistor voltage
+                V_thermADC = ADC2BUF0;        //fixed resistor voltage, 1000 Ohms
 
-                V_therm = V_thermADC*(3.3/1024);
-                
-                R_therm = (3300/V_therm)-1000;
+                V_therm = 3.3*(V_thermADC/1024);
+
+                //compute Thermistor resistance
+                R_therm = (3300/V_therm)-1000; // baka mali ung data types
+
 
                 
 
