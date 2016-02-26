@@ -195,7 +195,7 @@ void init_adc_therm(void){
     AD2CON1bits.FORM = 0;  //integer
     AD2CHS0bits.CH0NA = 0; //VREFL
     AD2CHS0bits.CH0SA  = 3; //AN3 AS input
-    AD2CON3 = 0;
+    AD2CON3 = 0x0002;
     AD2CON2 = 0;
 
 }
@@ -310,8 +310,9 @@ unsigned char * getdigits(double result_freq){
 
 int main(void){
 //	setup_clock();			// make clock = 8Mhz. clock output on OSC2 pin
-	AD1PCFGL = 0xFFEF;		// all port B pins as digital, RB2 as analog
-	TRISB = 0x0010;			// set all PORT pins as output
+	AD1PCFGL = 0xFFE7;		// all port B pins as digital, RB4/5 as analog (thermistor and signal)
+        AD2PCFGL = 0xFFE7;
+        TRISB = 0x0010;			// set all PORT pins as output
   
 	init_uart();
 	init_timer2();
@@ -420,15 +421,12 @@ int main(void){
                 while (!AD2CON1bits.DONE);
                 V_thermADC = ADC2BUF0;        //fixed resistor voltage, 1000 Ohms
 
-                V_therm = 3.3*(V_thermADC/1024);
 
                 //compute Thermistor resistance
-                R_therm = (3300/V_therm)-1000; // baka mali ung data types
+                R_therm = 1000*((1024.00/V_thermADC)-1); // baka mali ung data types
 
 
-                
-
-                sprintf(buf, "%f \t   \r\n",R_therm);
+                sprintf(buf, "%d \t   \r\n",V_thermADC);
                 transmit(buf);
                 AD2CON1bits.ADON = 0;
            
