@@ -310,9 +310,10 @@ unsigned char * getdigits(double result_freq){
 
 int main(void){
 //	setup_clock();			// make clock = 8Mhz. clock output on OSC2 pin
-	AD1PCFGL = 0xFFE7;		// all port B pins as digital, RB4/5 as analog (thermistor and signal)
-        AD2PCFGL = 0xFFE7;
-        TRISB = 0x0010;			// set all PORT pins as output
+	// setting up pins for sweep adc and therm adc
+        AD1PCFGL = 0xFFE7;		// all port B pins as digital, RB4/5 as analog (thermistor and signal)
+        TRISB = 0x0018;			// set all PORT pins as output
+        
   
 	init_uart();
 	init_timer2();
