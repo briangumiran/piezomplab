@@ -46,6 +46,8 @@
 #define NORMALMODE 0//0 for test mode
 #define PIEZONUM 21 //actual number of PIEZO
 
+
+
 #include <p33Fxxxx.h>
 #include "dsp.h"
 #include "fft.h"
@@ -53,7 +55,7 @@
 #include <stdio.h>
 #include "senslope_can.h"
 #include "PZOCalib.h"
-
+#include "math.h"
 
 
 /*CONFIG params*/
@@ -125,15 +127,14 @@ char buf[50];               //for UART testing
 long node_id = PZO_NODE_ID;           //sensor node ID 0x29, for testing 0x01
 int data[FFT_BLOCK_LENGTH]; //data for samples
 unsigned char *parsed_data;        //parsed data holder
+unsigned char *parsed_temp;         //parsed temp data
 int num = 0, sampling_done = 0, check_init = 0;
 int freq = START_FREQ, period, pulse_repeat;
 unsigned int status = 0;
 mID gCanMsg;                //!< global variable for buffer for CAN messages.
 double result;              //variable for FFT result frequency
 int counter = 0;
-double V_therm; // for thermistor temp
-int V_thermADC; // for thermistor temp
-double R_therm; // for thermistor temp
+double temperature; //thermistor temp
 /*==================================================*/
 
 // transmit to UART
@@ -308,6 +309,36 @@ unsigned char * getdigits(double result_freq){
 }
 
 
+double read_temp(void){
+
+    int V_thermADC; //voltage reading in bits
+    double R_therm; // thermistor resistance
+    double Therm_temp; // thermistor temp
+    //piezometer thermistor constants
+    double TH_CONA = 0.00139651672232862;
+    double TH_CONB = 0.0002389894526525;
+    double TH_CONC = 0.00000008909757416;
+
+    //read thermistor resistance
+
+    AD2CON1bits.ADON = 1;
+    AD2CON1bits.SAMP = 1;	// start sampling
+    __delay_us(10);
+    AD2CON1bits.SAMP = 0;	// end sampling, start converting
+    while (!AD2CON1bits.DONE);
+    V_thermADC = ADC2BUF0;        //fixed resistor voltage, 1000 Ohms
+
+    //compute Thermistor resistance
+    R_therm = 1000*((1024.00/V_thermADC)-1);
+
+    //compute temperature using Steinhart-Heart Equation
+    Therm_temp =-273.2 + (1/(TH_CONA + TH_CONB*log(R_therm) + TH_CONC*pow((log(R_therm)),3)));
+
+    AD2CON1bits.ADON = 0;
+   
+    return Therm_temp;
+}
+
 int main(void){
 //	setup_clock();			// make clock = 8Mhz. clock output on OSC2 pin
 	// setting up pins for sweep adc and therm adc
@@ -359,12 +390,15 @@ int main(void){
                 sprintf(buf, "%.3f\r\n",result);
                 transmit(buf);
 
-                //piezo calib
+                //piezo calib and result parsing
                 result = (PC_FAC*result)+PC_CON;
-           
                 parsed_data = getdigits(result);
-                sampling_done = 0;                      //toggle sample flag
 
+                //temp reading and result parsing
+                temperature = read_temp();
+                parsed_temp = getdigits(temperature);
+
+                sampling_done = 0;                      //toggle sample flag
 
                 /*Set CAN data loading depending on Sensor Column*/
 
@@ -413,23 +447,11 @@ int main(void){
                 sprintf(buf, "%.3f \t %d  \r\n",result, counter);
                 transmit(buf);
 
-                //read thermistor resistance
+                //get temp
+                temperature = read_temp();
 
-                AD2CON1bits.ADON = 1;
-                AD2CON1bits.SAMP = 1;	// start sampling
-                __delay_us(10);
-                AD2CON1bits.SAMP = 0;	// end sampling, start converting
-                while (!AD2CON1bits.DONE);
-                V_thermADC = ADC2BUF0;        //fixed resistor voltage, 1000 Ohms
-
-
-                //compute Thermistor resistance
-                R_therm = 1000*((1024.00/V_thermADC)-1); // baka mali ung data types
-
-
-                sprintf(buf, "%d \t   \r\n",V_thermADC);
+                sprintf(buf, "%f \t   \r\n",temperature);
                 transmit(buf);
-                AD2CON1bits.ADON = 0;
            
                 sampling_done = 0;
                 __delay_ms(5000);
@@ -442,6 +464,7 @@ int main(void){
 
 	return 0;
 }
+
 
 
 void __attribute__((__interrupt__, no_auto_psv)) _U1TXInterrupt(void){

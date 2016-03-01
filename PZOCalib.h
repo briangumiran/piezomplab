@@ -54,7 +54,7 @@ extern "C" {
     #elif(PIEZONUM == 21)
         #define PC_FAC 0.9996
         #define PC_CON 12.809
-        #define PZO_NODE_ID 0x28 //5-26 kasi yung nodes, node 27
+        #define PZO_NODE_ID 0x28 
     #else
         #define PC_FAC +1.006
         #define PC_CON -7.8809
