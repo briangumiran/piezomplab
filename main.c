@@ -126,8 +126,9 @@ __attribute__ ((space(auto_psv), aligned (FFT_BLOCK_LENGTH*2)));
 char buf[50];               //for UART testing
 long node_id = PZO_NODE_ID;           //sensor node ID 0x29, for testing 0x01
 int data[FFT_BLOCK_LENGTH]; //data for samples
-unsigned char *parsed_data;        //parsed data holder
-unsigned char *parsed_temp;         //parsed temp data
+unsigned char *tempoparse; //parsing holder
+unsigned char parsed_freq[6];        //parsed freq holder
+unsigned char parsed_temp[6];         //parsed temp data
 int num = 0, sampling_done = 0, check_init = 0;
 int freq = START_FREQ, period, pulse_repeat;
 unsigned int status = 0;
@@ -286,9 +287,9 @@ void init_sweep(){
 }
 
 /*parse the frequency result, get the digits*/
-unsigned char * getdigits(double result_freq){
+unsigned char *getdigits(double result_freq, unsigned char result_digits[]){
     int digits[6]; //  result of digit decomposition (3 bytes)
-    static unsigned char result_digits[6]; //store the result in pairs (thousands-tenths)
+   // static unsigned char result_digits[6]; //store the result in pairs (thousands-tenths)
     long int temp = result_freq*100; //move the decimal up
         long int div = 1;
         int i=0;
@@ -313,7 +314,7 @@ unsigned char * getdigits(double result_freq){
         result_digits[4] = (unsigned char)(digits[4]);
         result_digits[5] = (unsigned char)(digits[5]);
 
-    return *result_digits;
+    return result_digits;
 }
 
 
@@ -397,20 +398,33 @@ int main(void){
                 //check result in UART
                 sprintf(buf, "%.3f\r\n",result);
                 transmit(buf);
-                
-                sprintf(buf, "%f\r\n",result);
-                transmit(buf);
 
                 //piezo calib and result parsing
                 result = (PC_FAC*result)+PC_CON;
-                parsed_data = getdigits(result);
-
-                sprintf(buf, "%f\r\n",temperature);
+                getdigits(result,parsed_freq);
+               //check freq result
+                sprintf(buf, "%f\r\n",result);
                 transmit(buf);
+                //check getdigits results
+                int a;
+                for (a = 0; a < 6; a++){
+                    sprintf(buf, "%u\r\n",parsed_freq[a]);
+                    transmit(buf);
+                }
 
                 //temp reading and result parsing
-                temperature = 1000*read_temp(); //for parsing purposes
-                parsed_temp = getdigits(temperature);
+                temperature = 100*read_temp(); //for parsing purposes
+                getdigits(temperature,parsed_temp);
+
+                    //check temperature result
+                sprintf(buf, "%f\r\n",temperature);
+                transmit(buf);
+                int b;
+                    //check getdigits results
+                for (b = 0; b < 6; b++){
+                    sprintf(buf, "%d\r\n",parsed_temp[b]);
+                    transmit(buf);
+                }
 
                 sampling_done = 0;                      //toggle sample flag
 
@@ -419,11 +433,11 @@ int main(void){
                 if(ARQ_LOGGER){ //for new column (CAN Broadcast)
 
                     gCanMsg.data[0] = 0xFF; //message id
-                    gCanMsg.data[1] = parsed_data[0];
+                    gCanMsg.data[1] = parsed_freq[0];
                     gCanMsg.data[2] = 0xCC;
-                    gCanMsg.data[3] = parsed_data[1];
+                    gCanMsg.data[3] = parsed_freq[1];
                     gCanMsg.data[4] = 0xCC;
-                    gCanMsg.data[5] = parsed_data[2];
+                    gCanMsg.data[5] = parsed_freq[2];
                     gCanMsg.data[6] = 0xCC;
                     gCanMsg.data[7] = 0x00; //RESERVED FOR THERMISTOR
                     gCanMsg.data_length = 8;
@@ -434,11 +448,11 @@ int main(void){
                 else{ //for old colum (polling)
                     //print buffer data to prevent parsing
                     //include thermistor data
-                    gCanMsg.data[0] = 10*parsed_data[0]+parsed_data[1];
+                    gCanMsg.data[0] = 10*parsed_freq[0]+parsed_freq[1];
                     gCanMsg.data[1] = 0x00;
-                    gCanMsg.data[2] = 10*parsed_data[2]+parsed_data[3];
+                    gCanMsg.data[2] = 10*parsed_freq[2]+parsed_freq[3];
                     gCanMsg.data[3] = 0x00;
-                    gCanMsg.data[4] = 10*parsed_data[4]+parsed_data[5];
+                    gCanMsg.data[4] = 10*parsed_freq[4]+parsed_freq[5];
                     gCanMsg.data[5] = 0x00;
                     gCanMsg.data[6] = 10*parsed_temp[0]+parsed_temp[1];      //thermistor
                     gCanMsg.data[7] = 10*parsed_temp[2]+parsed_temp[3];
