@@ -42,9 +42,9 @@
 #define TIMEOUT 10000//!< timeout to wait for sending
 
 //identification of sensor site peizo
-#define ARQ_LOGGER 1 // 0 for OLD master
-#define NORMALMODE 0//0 for test mode
-#define PIEZONUM 21 //actual number of PIEZO
+#define ARQ_LOGGER 0 // 0 for OLD master
+#define NORMALMODE 1 //0 for test mode
+#define PIEZONUM 0 //actual number of PIEZO
 
 
 
@@ -288,7 +288,7 @@ void init_sweep(){
 /*parse the frequency result, get the digits*/
 unsigned char * getdigits(double result_freq){
     int digits[6]; //  result of digit decomposition (3 bytes)
-    static unsigned char result_digits[3]; //store the result in pairs (thousands-tenths)
+    static unsigned char result_digits[6]; //store the result in pairs (thousands-tenths)
     long int temp = result_freq*100; //move the decimal up
         long int div = 1;
         int i=0;
@@ -301,11 +301,19 @@ unsigned char * getdigits(double result_freq){
             digits[i++]=temp/div;
             temp %= div;
         }
-    //organize data to nibbles for can transmission
-        result_digits[2]=(unsigned char)(digits[0]*10+digits[1]);
-        result_digits[1]=(unsigned char)(digits[2]*10+digits[3]);
-        result_digits[0]=(unsigned char)(digits[4]*10+digits[5]);
-    return result_digits;
+//    //organize data to nibbles for can transmission
+//        result_digits[2]=(unsigned char)(digits[0]*10+digits[1]);
+//        result_digits[1]=(unsigned char)(digits[2]*10+digits[3]);
+//        result_digits[0]=(unsigned char)(digits[4]*10+digits[5]);
+      //digits restructured as singles not as pairs
+        result_digits[0] = (unsigned char)(digits[0]);
+        result_digits[1] = (unsigned char)(digits[1]);
+        result_digits[2] = (unsigned char)(digits[2]);
+        result_digits[3] = (unsigned char)(digits[3]);
+        result_digits[4] = (unsigned char)(digits[4]);
+        result_digits[5] = (unsigned char)(digits[5]);
+
+    return *result_digits;
 }
 
 
@@ -326,10 +334,10 @@ double read_temp(void){
     __delay_us(10);
     AD2CON1bits.SAMP = 0;	// end sampling, start converting
     while (!AD2CON1bits.DONE);
-    V_thermADC = ADC2BUF0;        //fixed resistor voltage, 1000 Ohms
+    V_thermADC = ADC2BUF0;        
 
     //compute Thermistor resistance
-    R_therm = 1000*((1024.00/V_thermADC)-1);
+    R_therm = 1000*((1024.00/V_thermADC)-1); //fixed resistor voltage, 1000 Ohms
 
     //compute temperature using Steinhart-Heart Equation
     Therm_temp =-273.2 + (1/(TH_CONA + TH_CONB*log(R_therm) + TH_CONC*pow((log(R_therm)),3)));
@@ -371,7 +379,7 @@ int main(void){
             /*Check Incoming data*/
                 status = can_check_for_datain_extended(&gCanMsg);
 
-                //check node id of the poll if same with the node ID of the sensor
+                //check node id of the poll if same with the node ID of the sensorchr
                 if(status & ((gCanMsg.id >> 3) == node_id)){
                     sprintf(buf, "CAN POLL RECIEVED, START SAMPLING.\r\n");
                     transmit(buf);
@@ -389,13 +397,19 @@ int main(void){
                 //check result in UART
                 sprintf(buf, "%.3f\r\n",result);
                 transmit(buf);
+                
+                sprintf(buf, "%f\r\n",result);
+                transmit(buf);
 
                 //piezo calib and result parsing
                 result = (PC_FAC*result)+PC_CON;
                 parsed_data = getdigits(result);
 
+                sprintf(buf, "%f\r\n",temperature);
+                transmit(buf);
+
                 //temp reading and result parsing
-                temperature = read_temp();
+                temperature = 1000*read_temp(); //for parsing purposes
                 parsed_temp = getdigits(temperature);
 
                 sampling_done = 0;                      //toggle sample flag
@@ -404,7 +418,7 @@ int main(void){
 
                 if(ARQ_LOGGER){ //for new column (CAN Broadcast)
 
-                    gCanMsg.data[0] = 0xFF;
+                    gCanMsg.data[0] = 0xFF; //message id
                     gCanMsg.data[1] = parsed_data[0];
                     gCanMsg.data[2] = 0xCC;
                     gCanMsg.data[3] = parsed_data[1];
@@ -418,14 +432,17 @@ int main(void){
                 }
 
                 else{ //for old colum (polling)
-                    //print buffer data to prevent parsing 
-                    gCanMsg.data[0] = parsed_data[2];
-                    gCanMsg.data[1] = 0xAB;
-                    gCanMsg.data[2] = parsed_data[1];
-                    gCanMsg.data[3] = 0xCD;
-                    gCanMsg.data[4] = parsed_data[0];
-                    gCanMsg.data[5] = 0xEF;
-                    gCanMsg.data_length = 6;
+                    //print buffer data to prevent parsing
+                    //include thermistor data
+                    gCanMsg.data[0] = 10*parsed_data[0]+parsed_data[1];
+                    gCanMsg.data[1] = 0x00;
+                    gCanMsg.data[2] = 10*parsed_data[2]+parsed_data[3];
+                    gCanMsg.data[3] = 0x00;
+                    gCanMsg.data[4] = 10*parsed_data[4]+parsed_data[5];
+                    gCanMsg.data[5] = 0x00;
+                    gCanMsg.data[6] = 10*parsed_temp[0]+parsed_temp[1];      //thermistor
+                    gCanMsg.data[7] = 10*parsed_temp[2]+parsed_temp[3];
+                    gCanMsg.data_length = 8;
                     gCanMsg.id = node_id<<3;
                     can_send_data_with_arb_repeat_extended(&gCanMsg,TIMEOUT);
                 }
@@ -448,7 +465,8 @@ int main(void){
                 transmit(buf);
 
                 //get temp
-                temperature = read_temp();
+                temperature = 1000*read_temp();
+                
 
                 sprintf(buf, "%f \t   \r\n",temperature);
                 transmit(buf);

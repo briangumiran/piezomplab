@@ -50,7 +50,7 @@
       <compileType>
         <linkerTool>
           <linkerLibItems>
-            <linkerLibFileItem>../PiezoMay2015/libdsp-elf.a</linkerLibFileItem>
+            <linkerLibFileItem>libdsp-elf.a</linkerLibFileItem>
           </linkerLibItems>
         </linkerTool>
         <loading>
