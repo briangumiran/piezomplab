@@ -35,7 +35,7 @@ extern "C" {
     #elif (PIEZONUM == 90)   //arq logger, old nodes 1 dati
         #define PC_FAC 1.0051
         #define PC_CON 0.134
-        #define PZO_NODE_ID 0xFF //ARQ data logger standard ID 
+        #define PZO_NODE_ID 0xFF //ARQ data logger standard ID
     //PIEZO6 FOR HUMB
     #elif (PIEZONUM == 6) // 6 ni ivy
         #define PC_FAC 1.0045

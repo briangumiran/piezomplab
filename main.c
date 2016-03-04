@@ -42,9 +42,9 @@
 #define TIMEOUT 10000//!< timeout to wait for sending
 
 //identification of sensor site peizo
-#define ARQ_LOGGER 0 // 0 for OLD master
+#define ARQ_LOGGER 1 // 0 for OLD master
 #define NORMALMODE 1 //0 for test mode
-#define PIEZONUM 0 //actual number of PIEZO
+#define PIEZONUM 90 //actual number of PIEZO
 
 
 
@@ -430,18 +430,23 @@ int main(void){
 
                 /*Set CAN data loading depending on Sensor Column*/
 
-                if(ARQ_LOGGER){ //for new column (CAN Broadcast)
+                //dapat isa lang kalalabasan netong dalawa
 
-                    gCanMsg.data[0] = 0xFF; //message id
-                    gCanMsg.data[1] = parsed_freq[0];
-                    gCanMsg.data[2] = 0xCC;
-                    gCanMsg.data[3] = parsed_freq[1];
-                    gCanMsg.data[4] = 0xCC;
-                    gCanMsg.data[5] = parsed_freq[2];
-                    gCanMsg.data[6] = 0xCC;
-                    gCanMsg.data[7] = 0x00; //RESERVED FOR THERMISTOR
+                if(ARQ_LOGGER){ //for old column (CAN Broadcast) using new arq column, kulang pa ng isang case for new column + piezo
+
+                    //frequency dapat <data0> <data1> <data2> tigdadalawa, parehas nung sa temp, kaya may bitshift bitshift
+                    //para parehas ng server parsing
+
+                    gCanMsg.data[0] = 0xFF; //message id (pinagusapan sa lab)
+                    gCanMsg.data[1] = 10*parsed_freq[0]+parsed_freq[1]; //okay lang kasi 1d talaga
+                    gCanMsg.data[2] = (10*parsed_freq[2]+parsed_freq[3])>>4; // para ung 3rd digit ay ganun talaga
+                    gCanMsg.data[3] = ((10*parsed_freq[2]+parsed_freq[3])<<4)+((10*parsed_freq[4]+parsed_freq[5])>>4); //adjust 4th and 5th digit
+                    gCanMsg.data[4] = (10*parsed_freq[4]+parsed_freq[5]); //adjust 6th digit mawawala naman ung 5th
+                    gCanMsg.data[5] = 10*parsed_temp[0]+parsed_temp[1]; //temperature data
+                    gCanMsg.data[6] = (10*parsed_temp[2]+parsed_temp[3])>>4; //readjust digits in can frame
+                    gCanMsg.data[7] = (10*parsed_temp[2]+parsed_temp[3])<<4; //RESERVED FOR THERMISTOR
                     gCanMsg.data_length = 8;
-                    gCanMsg.id = node_id;
+                    gCanMsg.id = node_id; //FE din
                     can_send_data_with_arb_repeat_extended(&gCanMsg,TIMEOUT);
                 }
 
