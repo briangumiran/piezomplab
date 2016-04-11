@@ -39,18 +39,19 @@
 #define START_FREQ 2500
 #define END_FREQ 3100
 #define PULSE_LEN 5 //number of pulses before incrementing frequency
-#define TIMEOUT 10000//!< timeout to wait for sending
+#define TIMEOUT 15000//!< timeout to wait for sending
 
 //identification of sensor site peizo
-#define ARQ_LOGGER 1 // 0 for OLD master
+#define ARQ_LOGGER 0 // 0 for OLD master
 #define NORMALMODE 1 //0 for test mode
-#define PIEZONUM 90 //actual number of PIEZO
+#define PIEZONUM 11 //actual number of PIEZO
 
 
 
 #include <p33Fxxxx.h>
 #include "dsp.h"
 #include "fft.h"
+
 #include <libpic30.h>
 #include <stdio.h>
 #include "senslope_can.h"
@@ -382,7 +383,7 @@ int main(void){
 
                 //check node id of the poll if same with the node ID of the sensorchr
                 if(status & ((gCanMsg.id >> 3) == node_id)){
-                    sprintf(buf, "CAN POLL RECIEVED, START SAMPLING.\r\n");
+                    sprintf(buf, "CAN POLL RECIEVED, START SAMPLING NODE ID %ld %ld.\r\n",node_id,node_id>>3);
                     transmit(buf);
 
                     T6CONbits.TON = 1; // start sweep
@@ -421,7 +422,8 @@ int main(void){
                 transmit(buf);
                 int b;
                     //check getdigits results
-                for (b = 0; b < 6; b++){
+                for
+                (b = 0; b < 6; b++){
                     sprintf(buf, "%d\r\n",parsed_temp[b]);
                     transmit(buf);
                 }
@@ -463,6 +465,8 @@ int main(void){
                     gCanMsg.data[7] = 10*parsed_temp[2]+parsed_temp[3];
                     gCanMsg.data_length = 8;
                     gCanMsg.id = node_id<<3;
+                    sprintf(buf, "%ld\r\n",gCanMsg.id);
+                    transmit(buf);
                     can_send_data_with_arb_repeat_extended(&gCanMsg,TIMEOUT);
                 }
             }
