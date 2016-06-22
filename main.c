@@ -42,9 +42,9 @@
 #define TIMEOUT 15000//!< timeout to wait for sending
 
 //identification of sensor site peizo
-#define ARQ_LOGGER 0 // 0 for OLD master
+#define ARQ_LOGGER 1 // 0 for OLD master
 #define NORMALMODE 1 //0 for test mode
-#define PIEZONUM 11 //actual number of PIEZO
+#define PIEZONUM 1 //actual number of PIEZO
 
 
 
@@ -266,7 +266,7 @@ double do_fft(int *input_data){
 	peakFrequency = peakFrequencyBin*((double)SAMPLING_RATE/FFT_BLOCK_LENGTH);
 	peakFrequency = (double)(-1.001*peakFrequency)+3109;		// from experimental calibration
 
-        if((peakFrequency<5000) & (peakFrequency>2000)){
+        if((peakFrequency<5000) & (peakFrequency>2000)){ //filter for max-min 
             return peakFrequency;
         }
         else{
@@ -340,6 +340,10 @@ double read_temp(void){
 
     //compute Thermistor resistance
     R_therm = 1000*((1024.00/V_thermADC)-1); //fixed resistor voltage, 1000 Ohms
+    
+//    sprintf(buf, "%f \r\n", R_therm);
+//    transmit(buf);
+
 
     //compute temperature using Steinhart-Heart Equation
     Therm_temp =-273.2 + (1/(TH_CONA + TH_CONB*log(R_therm) + TH_CONC*pow((log(R_therm)),3)));
@@ -448,7 +452,7 @@ int main(void){
                     gCanMsg.data[6] = (10*parsed_temp[2]+parsed_temp[3])>>4; //readjust digits in can frame
                     gCanMsg.data[7] = (10*parsed_temp[2]+parsed_temp[3])<<4; //RESERVED FOR THERMISTOR
                     gCanMsg.data_length = 8;
-                    gCanMsg.id = node_id; //FE din
+                    gCanMsg.id = node_id; //FF din
                     can_send_data_with_arb_repeat_extended(&gCanMsg,TIMEOUT);
                 }
 

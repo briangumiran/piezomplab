@@ -45,12 +45,12 @@ extern "C" {
     #elif (PIEZONUM == 6) // 6 ni ivy
         #define PC_FAC 1.0045
         #define PC_CON 3.8073
-        #define PZO_NODE_ID 0x1B   //1-26 kasi ang humay
-    //PIEZO7 FOR HUMT
-    #elif (PIEZONUM == 7)
-        #define PC_FAC 1.0051
-        #define PC_CON -8.4971
-        #define PZO_NODE_ID 0x1B //5-26 kasi yung nodes, node 27
+        #define PZO_NODE_ID 0xFF   //ARQ data logger standard ID for HUMB
+    //PIEZO4 FOR HUMT
+    #elif (PIEZONUM == 4)
+        #define PC_FAC 1.0002
+        #define PC_CON -10.004
+        #define PZO_NODE_ID 0xFF //ARQ data logger
         //PIEZO8 FOR OSLT
     #elif (PIEZONUM == 8) //busted oslt
         #define PC_FAC 0.9991
@@ -59,11 +59,15 @@ extern "C" {
     #elif(PIEZONUM == 21)
         #define PC_FAC 0.9996
         #define PC_CON 12.809
-        #define PZO_NODE_ID 0x28 
+        #define PZO_NODE_ID 0x28
+    #elif(PIEZONUM == 1) // 1-RA, MAMBDUE (new)
+        #define PC_FAC 1.0006
+        #define PC_CON 7.6922
+        #define PZO_NODE_ID 0xFF //ARQ standard piezo/message id
     #else
         #define PC_FAC +1.006
         #define PC_CON -7.8809
-        #define PZO_NODE_ID 0x29
+        #define PZO_NODE_ID 0xFF
     #endif
 #endif
 
