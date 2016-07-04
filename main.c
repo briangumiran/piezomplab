@@ -44,7 +44,7 @@
 //identification of sensor site peizo
 #define ARQ_LOGGER 1 // 0 for OLD master
 #define NORMALMODE 1 //0 for test mode
-#define PIEZONUM 1 //actual number of PIEZO
+#define PIEZONUM 3 //actual number of PIEZO
 
 
 
@@ -401,36 +401,35 @@ int main(void){
                 }
                 result = do_fft(data);			//sampling finished. do fft.
                 //check result in UART
-                sprintf(buf, "%.3f\r\n",result);
+                sprintf(buf, "fraw: %.2f\r\n",result);
                 transmit(buf);
 
                 //piezo calib and result parsing
                 result = (PC_FAC*result)+PC_CON;
                 getdigits(result,parsed_freq);
                //check freq result
-                sprintf(buf, "%f\r\n",result);
+                sprintf(buf, "freq: %2f\r\n",result);
                 transmit(buf);
                 //check getdigits results
-                int a;
-                for (a = 0; a < 6; a++){
-                    sprintf(buf, "%u\r\n",parsed_freq[a]);
-                    transmit(buf);
-                }
+//                int a;
+//                for (a = 0; a < 6; a++){
+//                    sprintf(buf, "%u\r\n",parsed_freq[a]);
+//                    transmit(buf);
+//                }
 
                 //temp reading and result parsing
                 temperature = 100*read_temp(); //for parsing purposes
                 getdigits(temperature,parsed_temp);
 
                     //check temperature result
-                sprintf(buf, "%f\r\n",temperature);
+                sprintf(buf, "temp: %.2f\r\n",temperature);
                 transmit(buf);
-                int b;
+//                int b;
                     //check getdigits results
-                for
-                (b = 0; b < 6; b++){
-                    sprintf(buf, "%d\r\n",parsed_temp[b]);
-                    transmit(buf);
-                }
+//                for(b = 0; b < 6; b++){
+//                    sprintf(buf, "%d\r\n",parsed_temp[b]);
+//                    transmit(buf);
+//                }
 
                 sampling_done = 0;                      //toggle sample flag
 
@@ -443,20 +442,23 @@ int main(void){
                     //frequency dapat <data0> <data1> <data2> tigdadalawa, parehas nung sa temp, kaya may bitshift bitshift
                     //para parehas ng server parsing
 
-                    gCanMsg.data[0] = 0xFF; //message id (pinagusapan sa lab)
-                    gCanMsg.data[1] = 10*parsed_freq[0]+parsed_freq[1]; //okay lang kasi 1d talaga
-                    gCanMsg.data[2] = (10*parsed_freq[2]+parsed_freq[3])>>4; // para ung 3rd digit ay ganun talaga
-                    gCanMsg.data[3] = ((10*parsed_freq[2]+parsed_freq[3])<<4)+((10*parsed_freq[4]+parsed_freq[5])>>4); //adjust 4th and 5th digit
-                    gCanMsg.data[4] = (10*parsed_freq[4]+parsed_freq[5]); //adjust 6th digit mawawala naman ung 5th
-                    gCanMsg.data[5] = 10*parsed_temp[0]+parsed_temp[1]; //temperature data
+                    //balibaliktad CAN frame (FOR DUELOGGER DATA LOGGER AND V1 NODES)
+                    gCanMsg.data[1] = 0xFF; //message id (pinagusapan sa lab)
+                    gCanMsg.data[0] = 10*parsed_freq[0]+parsed_freq[1]; //okay lang kasi 1d talaga
+                    gCanMsg.data[3] = (10*parsed_freq[2]+parsed_freq[3])>>4; // para ung 3rd digit ay ganun talaga
+                    gCanMsg.data[2] = ((10*parsed_freq[2]+parsed_freq[3])<<4)+((10*parsed_freq[4]+parsed_freq[5])>>4); //adjust 4th and 5th digit
+                    gCanMsg.data[5] = (10*parsed_freq[4]+parsed_freq[5]); //adjust 6th digit mawawala naman ung 5th
+                    gCanMsg.data[4] = 10*parsed_temp[0]+parsed_temp[1]; //temperature data
                     gCanMsg.data[6] = (10*parsed_temp[2]+parsed_temp[3])>>4; //readjust digits in can frame
                     gCanMsg.data[7] = (10*parsed_temp[2]+parsed_temp[3])<<4; //RESERVED FOR THERMISTOR
                     gCanMsg.data_length = 8;
                     gCanMsg.id = node_id; //FF din
                     can_send_data_with_arb_repeat_extended(&gCanMsg,TIMEOUT);
+
+
                 }
 
-                else{ //for old colum (polling)
+                else{ //for old data logger (polling)
                     //print buffer data to prevent parsing
                     //include thermistor data
                     gCanMsg.data[0] = 10*parsed_freq[0]+parsed_freq[1];
