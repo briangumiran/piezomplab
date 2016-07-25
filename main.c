@@ -43,7 +43,7 @@
 
 //identification of sensor site peizo
 #define ARQ_LOGGER 1 // 0 for OLD master
-#define NORMALMODE 1 //0 for test mode
+#define NORMALMODE 0 //0 for test mode
 #define PIEZONUM 3 //actual number of PIEZO
 
 
@@ -374,6 +374,7 @@ int main(void){
 		transmit(buf);
 	}
 
+        
         node_ecan_init();//initialize CAN
         
         
@@ -385,7 +386,7 @@ int main(void){
             /*Check Incoming data*/
                 status = can_check_for_datain_extended(&gCanMsg);
 
-                //check node id of the poll if same with the node ID of the sensorchr
+                //check node id of the poll if same with the node ID of the sensor
                 if(status & ((gCanMsg.id >> 3) == node_id)){
                     sprintf(buf, "CAN POLL RECIEVED, START SAMPLING NODE ID %ld %ld.\r\n",node_id,node_id>>3);
                     transmit(buf);
@@ -494,7 +495,7 @@ int main(void){
                 transmit(buf);
 
                 //get temp
-                temperature = 1000*read_temp();
+                temperature = read_temp();
                 
 
                 sprintf(buf, "%f \t   \r\n",temperature);
@@ -554,7 +555,6 @@ void __attribute__((__interrupt__, no_auto_psv)) _T6Interrupt(void){
     else if (freq == END_FREQ){
         freq = START_FREQ;
         pulse_repeat = 0;
-
 
         LATBbits.LATB5 = 1; // make sure the signal is turned off
         //__delay_ms(50);
